@@ -12,63 +12,33 @@ import csv, json
 
 from multiprocessing import Process, Queue, Manager
 
-from client import Test
-
-dates, close_data, low_data, high_data, open_data = [], [], [], [], []
-dates_mAV, close_data_mAV = [], []
-
-# symbol to query the order book
-timeFrame_symbol = ':3h:tBTCUSD'
-timeFrame_symbol_short = ':1m:tBTCUSD'
-symbol = 'tBTCUSD'
-
-# set the parameters to limit the number of bids or asks
-parameters = {'limit': 10000, 'sort': -1}
+from client import Test, Helper
 
 # create the client
 API_KEY=os.getenv("BFX_KEY")
 API_SECRET=os.getenv("BFX_SECRET")
 
 test = Test(API_KEY, API_SECRET)
+helper = Helper(API_KEY, API_SECRET)
 os.system('clear')
 
-dates, close_data, low_data, high_data, open_data, volume_data = [], [], [], [], [], []
-dates_short, close_data_short, low_data_short, high_data_short, open_data_short, volume_data_short = [], [], [], [], [], []
-
-# call historic data & last candle and return combined data
-candles = test.getCandles3h(timeFrame_symbol, parameters, '/hist')
-
-for candle in candles:
-    ts = int(candle[0]) / 1000 
-    dates.append(datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S'))
-    open_data.append(candle[1])
-    close_data.append(candle[2])
-    high_data.append(candle[3])
-    low_data.append(candle[4])
-    volume_data.append(candle[5])
-
-dates = list(reversed(dates))
-open_data = list(reversed(open_data))
-close_data = list(reversed(close_data))
-high_data = list(reversed(high_data))
-low_data = list(reversed(low_data))
-volume_data = list(reversed(volume_data))
+symbol = 'BTCUSD'
+dates, open_data, close_data, high_data, low_data, volume_data = helper.getCandles("3h",symbol)
 
 fig = make_subplots(rows=2, cols=1)
 fig_quick = go.Figure()
 
 # create cutout
 start = len(close_data)-9900#3300 #3500 #334 #2500 #276 #830 #360 #87 #9950 #2920 #8760
-# end = len(close_data)-220
 end = len(close_data)-0
-start_short = len(close_data_short)-18000
 
-datesShortCut = dates_short[start_short:]
-datesCut = dates[start:end]
-close_dataCut = close_data[start:end]
-low_dataCut = low_data[start:end]
-high_dataCut = high_data[start:end]
-open_dataCut = open_data[start:end]
+
+# datesShortCut = dates_short[start_short:]
+# datesCut = dates[start:end]
+# close_dataCut = close_data[start:end]
+# low_dataCut = low_data[start:end]
+# high_dataCut = high_data[start:end]
+# open_dataCut = open_data[start:end]
 
 # candles
 # candle_fig = go.Candlestick(x=datesCut,
@@ -179,7 +149,7 @@ mAV_calculation[1] = mAV_calculation[1][start+1:]
 mfi_calculation = test.mfi_execute(ash_c,ash_d,ash_h, ash_l, ash_vol, start, mfiHigh, mfiLow, mfiP)[2]
 mfi_calculation[0] = mfi_calculation[0][start+1:]
 mfi_calculation[1] = mfi_calculation[1][start+1:]
-
+mfi_calculation[2] = mfi_calculation[2][start+1:]
 #combMFI
 balance = test.combinedMFI(close_data[1:], dates[1:], rsi_calculation, mAV_calculation, start, end, low_data[1:], high_data[1:], mfi_calculation, open_data[1:])
 # for i, bal in enumerate(balance[0]):
@@ -196,7 +166,7 @@ i, mfiP = 14, 33
 # mavLong, mavShort = 64, 12
 mavLong, mavShort = 86, 4
 mfiLow, mfiHigh = 15, 85
-# limitStop = 1
+limitStop = 0
 
 #rsi
 rsi = test.rsi(i, open_data)
@@ -221,6 +191,8 @@ mfi_calculation = test.mfi_execute(close_data, dates, high_data, low_data, volum
 
 mfi_calculation[0] = mfi_calculation[0][start+1:]
 mfi_calculation[1] = mfi_calculation[1][start+1:]
+mfi_calculation[2] = mfi_calculation[2][start+1:]
+# mfi_calculation[2] = test.scale(mfi_calculation[2])
 
 #combMFI
 balance = test.combinedMFI(close_data, dates, rsi_calculation, mAV_calculation, start, len(close_data), low_data, high_data, mfi_calculation, open_data)

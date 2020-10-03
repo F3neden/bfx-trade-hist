@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import requests
 import json
 import base64
@@ -9,10 +10,14 @@ import time
 from datetime import datetime
 from tenacity import *
 
+import numpy as np
+import pandas as pd
 from numpy import array
 from keras.models import Sequential
+from keras.models import load_model
 from keras.layers import LSTM
 from keras.layers import Dense
+
 
 PROTOCOL = "https"
 HOST = "api.bitfinex.com"
@@ -811,7 +816,6 @@ class Test:
         print("starting balance: ", self.amount*open_data[start])
         print(dates[start], "  buy at ", open_data[start])
         buyEnabled = True
-        # for idx in range(start, end-1):
         for idx in range(0, len(rsi_calculation[0])-2):
             date = dates[start+idx]
             rsi_index, mav_index, mfi_i = idx, idx, idx
@@ -829,7 +833,6 @@ class Test:
             #     mav_index = mav_calculation[1].index(date)
             # except ValueError:
             #     mav_index = 0
-            
             """ if high_data[idx] > lastBuyPrice:
                 lastBuyPrice = high_data[idx] """
             if mav_calculation[0][mav_index] == "buy":
@@ -854,7 +857,6 @@ class Test:
             # -> especially for workers
             elif (mav_calculation[0][mav_index] == "sell" or mfi[0][mfi_i] == "sell" or dates[start+idx+1] == dates[len(dates)-2] or ((lastBuyPrice/open_data[start+idx+1])-1) > stopLoss ) and self.amount != 0:
             # elif (mfi[0][mfi_i] == "sell" or dates[start+idx+1] == dates[len(dates)-2] or ((lastBuyPrice/open_data[start+idx+1])-1) > stopLoss ) and self.amount != 0:
-                
                 self.balance = self.amount * open_data[start+idx+1]
                 if ((lastBuyPrice/open_data[start+idx+1])-1) > stopLoss:
                     # self.balance = self.amount * (lastBuyPrice-lastBuyPrice*stopLoss)
@@ -885,6 +887,35 @@ class Helper:
         self.SECRET = secret
         pass
     
+    def getCandles(self, timeFrame, symbol):
+        dates, close_data, low_data, high_data, open_data, volume_data = [], [], [], [], [], []
+
+        # set the parameters to limit the number of bids or asks
+        parameters = {'limit': 10000, 'sort': -1}
+        timeFrame_symbol = ":" + timeFrame + ":t" + symbol
+        if timeFrame == "3h":
+            candles = self._get_3h(self.url_for(PATH_CANDLES+'/hist', (timeFrame_symbol), parameters=parameters, version=VERSION2))
+        else:
+            candles = self._get(self.url_for(PATH_CANDLES+'/hist', (timeFrame_symbol), parameters=parameters, version=VERSION2))
+
+        for candle in candles:
+            ts = int(candle[0]) / 1000 
+            dates.append(datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S'))
+            open_data.append(candle[1])
+            close_data.append(candle[2])
+            high_data.append(candle[3])
+            low_data.append(candle[4])
+            volume_data.append(candle[5])
+
+        dates = list(reversed(dates))
+        open_data = list(reversed(open_data))
+        close_data = list(reversed(close_data))
+        high_data = list(reversed(high_data))
+        low_data = list(reversed(low_data))
+        volume_data = list(reversed(volume_data))
+
+        return dates, open_data, close_data, high_data, low_data, volume_data
+
     @retry(wait=wait_fixed(15))
     def _get_3h(self, url):
         try:
