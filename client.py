@@ -877,7 +877,15 @@ class Test:
                 # balance_combined[1].append(dates[idx+1])
                 balance_combined[1].append(dates[start+idx+1])
 
-        return balance_combined
+        profitable = 0
+        for i in range(2,len(balance_combined[0])):
+            if balance_combined[0][i] > balance_combined[0][i-1]:
+                profitable +=1
+        
+        profTrades = profitable/(len(balance_combined[0])-2)
+        print(profTrades)
+
+        return balance_combined, profTrades
 
 class Helper:
     def __init__(self, key, secret):

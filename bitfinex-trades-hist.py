@@ -155,9 +155,9 @@ balance = test.combinedMFI(close_data[1:], dates[1:], rsi_calculation, mAV_calcu
 # for i, bal in enumerate(balance[0]):
 #     balance[0][i] = math.log(bal)
 f = open("maxBalanceAsh.txt", "w")
-f.write(str(balance[0][len(balance[0])-1]))
+f.write(str(balance[0][0][len(balance[0][0])-1]) + "\n" + str(balance[1] ))
 f.close()
-fig_quick.add_trace(go.Scatter(y=balance[0], x=balance[1], name='ash'+str([low, i, mavShort, mavLong, mfiHigh])+ 'close stoploss45'))
+fig_quick.add_trace(go.Scatter(y=balance[0][0], x=balance[0][1], name='ash'+str([low, i, mavShort, mavLong, mfiHigh])+ 'close stoploss44'))
 
 # --------------------------      normal rsi + mav + mfi      --------------------------------------#
 #####
@@ -197,10 +197,10 @@ mfi_calculation[2] = mfi_calculation[2][start+1:]
 #combMFI
 balance = test.combinedMFI(close_data, dates, rsi_calculation, mAV_calculation, start, len(close_data), low_data, high_data, mfi_calculation, open_data)
 f = open("maxBalanceNormal.txt", "w")
-f.write(str(balance[0][len(balance[0])-1]))
+f.write(str(balance[0][0][len(balance[0][0])-1]) + "\n" + str(balance[1] ))
 f.close()
 # for i, bal in enumerate(balance[0]):
 #     balance[0][i] = math.log(bal)
-fig_quick.add_trace(go.Scatter(y=balance[0], x=balance[1], name='normal'+str([low, i, mavShort, mavLong, mfiHigh])+ 'close stoploss45'))
+fig_quick.add_trace(go.Scatter(y=balance[0][0], x=balance[0][1], name='normal'+str([low, i, mavShort, mavLong, mfiHigh])+ 'close stoploss4'))
 fig_quick.show()
 # fig.show()
