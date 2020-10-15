@@ -29,7 +29,7 @@ fig = make_subplots(rows=2, cols=1)
 fig_quick = go.Figure()
 
 # create cutout
-start = len(close_data)-9900#3300 #3500 #334 #2500 #276 #830 #360 #87 #9950 #2920 #8760
+start = len(close_data)-9850#3300 #3500 #334 #2500 #276 #830 #360 #87 #9950 #2920 #8760
 end = len(close_data)-0
 
 
@@ -118,6 +118,13 @@ fig_quick.add_trace(go.Scatter(y=balance[0], x=balance[1], name='comb:balance:kn
 
 # fig_quick.show() """
 
+weekCandles = helper.getCandles("3h",symbol)
+
+#                                   high            low             close           dates
+# resistances = test.calcResistances(weekCandles[3], weekCandles[4], weekCandles[2], weekCandles[0],)
+# supports = test.calcSupports(weekCandles[3], weekCandles[4], weekCandles[2], weekCandles[0],)
+resistances = test.calcResistances(ash_h, ash_l, ash_c, ash_d,)
+supports = test.calcSupports(ash_h, ash_l, ash_c, ash_d,)
 
 # --------------------------      ash rsi + mav + mfi      --------------------------------------#
 ####
@@ -151,7 +158,7 @@ mfi_calculation[0] = mfi_calculation[0][start+1:]
 mfi_calculation[1] = mfi_calculation[1][start+1:]
 mfi_calculation[2] = mfi_calculation[2][start+1:]
 #combMFI
-balance = test.combinedMFI(close_data[1:], dates[1:], rsi_calculation, mAV_calculation, start, end, low_data[1:], high_data[1:], mfi_calculation, open_data[1:])
+balance = test.combinedMFI(close_data[1:], dates[1:], rsi_calculation, mAV_calculation, start, end, low_data[1:], high_data[1:], mfi_calculation, open_data[1:], resistances, supports)
 # for i, bal in enumerate(balance[0]):
 #     balance[0][i] = math.log(bal)
 f = open("maxBalanceAsh.txt", "w")
@@ -195,7 +202,7 @@ mfi_calculation[2] = mfi_calculation[2][start+1:]
 # mfi_calculation[2] = test.scale(mfi_calculation[2])
 
 #combMFI
-balance = test.combinedMFI(close_data, dates, rsi_calculation, mAV_calculation, start, len(close_data), low_data, high_data, mfi_calculation, open_data)
+balance = test.combinedMFI(close_data, dates, rsi_calculation, mAV_calculation, start, len(close_data), low_data, high_data, mfi_calculation, open_data, resistances, supports)
 f = open("maxBalanceNormal.txt", "w")
 f.write(str(balance[0][0][len(balance[0][0])-1]) + "\n" + str(balance[1] ))
 f.close()

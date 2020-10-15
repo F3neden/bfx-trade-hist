@@ -489,6 +489,91 @@ class Test:
         else:
             return None, dates[len(dates)-1]
 
+    def calcSupports(self, high, low, close, dates):
+        """
+        weekly data
+        PP = (High + Low + Close) / 3
+ 		R1 = 2 * PP - Low
+ 		S1 = 2 * PP - High
+ 		R2 = PP + (High - Low)
+ 		S2 = PP - (High - Low)
+ 		R3 = PP + 2 * (High - Low)
+		S3 = PP - 2 * (High - Low)
+        """
+        pp, s1, s2, s3 = [[],[]], [[],[]], [[],[]], [[],[]]
+
+        duration = 112
+
+        for i in range(duration, len(high)-1):
+            date = dates[i]
+            maxV = -sys.maxsize
+            minV = sys.maxsize
+            for idx in range(i-duration-duration,i+1-duration):
+                #max
+                if maxV < close[idx]:
+                    maxV = close[idx]
+                #min
+                if minV > close[idx]:
+                    minV = close[idx]
+
+            pp[0].append((maxV + minV + close[i]) / 3)
+            pp[1].append(dates[i])
+
+            curPP = pp[0][len(pp[0])-1]
+            s1[0].append(2*curPP - maxV)
+            s1[1].append(dates[i])
+
+            s2[0].append(curPP - (maxV-minV))
+            s2[1].append(dates[i])
+
+            s3[0].append(curPP - 2*(maxV-minV))
+            s3[1].append(dates[i])
+
+        return s1, s2, s3
+
+    def calcResistances(self, high, low, close, dates):
+        """
+        weekly data
+        PP = (High + Low + Close) / 3
+ 		R1 = 2 * PP - Low
+ 		S1 = 2 * PP - High
+ 		R2 = PP + (High - Low)
+ 		S2 = PP - (High - Low)
+ 		R3 = PP + 2 * (High - Low)
+		S3 = PP - 2 * (High - Low)
+        """
+        pp, r1, r2, r3 = [[],[]], [[],[]], [[],[]], [[],[]]
+
+        duration = 112
+
+        for i in range(duration, len(high)-1):
+            date = dates[i]
+            maxV = -sys.maxsize
+            minV = sys.maxsize
+            for idx in range(i-duration-duration,i+1-duration):
+                #max
+                if maxV < close[idx]:
+                    maxV = close[idx]
+                #min
+                if minV > close[idx]:
+                    minV = close[idx]
+
+            pp[0].append((maxV + minV + close[i]) / 3)
+            pp[1].append(dates[i])
+
+            curPP = pp[0][len(pp[0])-1]
+            r1[0].append(2*curPP -minV)
+            r1[1].append(dates[i])
+
+            r2[0].append(curPP + (maxV-minV))
+            r2[1].append(dates[i])
+
+            r3[0].append(curPP + 2*(maxV-minV))
+            r3[1].append(dates[i])
+
+
+        return r1, r2, r3
+
     def call_simulation(self, close_data, dates, close_data_mAV, dates_mAV, start, start_mAV, low_data, high_data):
         rsi_calculation, mAV_calculation = [], []
         
@@ -791,7 +876,7 @@ class Test:
 
         return balance_combined
 
-    def combinedMFI(self, close_data, dates, rsi_calculation, mav_calculation, start, end, low_data, high_data, mfi, open_data):
+    def combinedMFI(self, close_data, dates, rsi_calculation, mav_calculation, start, end, low_data, high_data, mfi, open_data, resistances, supports):
         """
         combines RSI and MFI
         """
@@ -819,6 +904,11 @@ class Test:
         for idx in range(0, len(rsi_calculation[0])-2):
             date = dates[start+idx]
             rsi_index, mav_index, mfi_i = idx, idx, idx
+            
+            for num, dat in enumerate(resistances[0][1], start = 0):
+                if dat==date:
+                    resistanceIdx = num-1
+                    break
             # try:
             #     mfi_i = mfi[1].index(date)
             # except ValueError:
@@ -837,7 +927,8 @@ class Test:
                 lastBuyPrice = high_data[idx] """
             if mav_calculation[0][mav_index] == "buy":
                 buyEnabled = True
-            if (buyEnabled and rsi_calculation[0][rsi_index] == "buy") and self.amount == 0:
+            if ((buyEnabled and rsi_calculation[0][rsi_index] == "buy") or open_data[start + idx] > resistances[0][0][resistanceIdx] or open_data[start + idx] > resistances[1][0][resistanceIdx] or open_data[start + idx] > resistances[2][0][resistanceIdx]) and self.amount == 0:
+            
             # if (rsi_calculation[0][rsi_index] == "buy") and self.amount == 0:
             # if (mfi[0][mfi_i] == "buy") and self.amount == 0:
             # if (mfi[0][mfi_i] == "buy") and self.amount == 0:
@@ -854,9 +945,10 @@ class Test:
             # elif (mav_calculation[0][mav_index] == "sell" or mfi[0][mfi_i] == "sell" or dates[idx] == dates[len(dates)-2] or ((lastBuyPrice/open_data[idx+1])-1) > stopLoss ) and self.amount != 0:
             # elif (mfi[0][mfi_i] == "sell" or dates[idx] == dates[len(dates)-2] or ((lastBuyPrice/open_data[idx+1])-1) > stopLoss ) and self.amount != 0:
             
-            # -> especially for workers
-            elif (mav_calculation[0][mav_index] == "sell" or mfi[0][mfi_i] == "sell" or dates[start+idx+1] == dates[len(dates)-2] or ((lastBuyPrice/open_data[start+idx+1])-1) > stopLoss ) and self.amount != 0:
-            # elif (mfi[0][mfi_i] == "sell" or dates[start+idx+1] == dates[len(dates)-2] or ((lastBuyPrice/open_data[start+idx+1])-1) > stopLoss ) and self.amount != 0:
+            elif (mav_calculation[0][mav_index] == "sell" or mfi[0][mfi_i] == "sell" or dates[start+idx+1] == dates[len(dates)-2] or ((lastBuyPrice/open_data[start+idx+1])-1) > stopLoss 
+                or open_data[start + idx+1] < supports[0][0][resistanceIdx] or open_data[start + idx+1] < supports[1][0][resistanceIdx] or open_data[start + idx+1] < supports[2][0][resistanceIdx]
+                ) and self.amount != 0:
+
                 self.balance = self.amount * open_data[start+idx+1]
                 if ((lastBuyPrice/open_data[start+idx+1])-1) > stopLoss:
                     # self.balance = self.amount * (lastBuyPrice-lastBuyPrice*stopLoss)
@@ -884,6 +976,8 @@ class Test:
         
         profTrades = profitable/(len(balance_combined[0])-2)
         print(profTrades)
+
+        print("buy and hold balance: ",((100 - 0.002*100) / open_data[start]) * open_data[len(open_data)-1])
 
         return balance_combined, profTrades
 
