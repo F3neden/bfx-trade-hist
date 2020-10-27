@@ -166,6 +166,7 @@ class Test:
         balances, b_dates, buyOrSell = [], [], [[],[], []]
         buyOrSell[0].append(None)
         buyOrSell[1].append(0)
+        buyOrSell[2].append(None)
         self.balance = 100
 
         if startAt < period*2:
@@ -500,7 +501,7 @@ class Test:
  		R3 = PP + 2 * (High - Low)
 		S3 = PP - 2 * (High - Low)
         """
-        pp, s1, s2, s3 = [[],[]], [[],[]], [[],[]], [[],[]]
+        pp, s1, s2, s3, s4 = [[],[]], [[],[]], [[],[]], [[],[]], [[],[]]
 
         duration = 112
 
@@ -529,7 +530,10 @@ class Test:
             s3[0].append(curPP - 2*(maxV-minV))
             s3[1].append(dates[i])
 
-        return s1, s2, s3
+            s4[0].append(((close[i-1]/1000 -(close[i-1]/1000)%1))*1000)
+            s4[1].append(dates[i])
+
+        return s1, s2, s3, s4
 
     def calcResistances(self, high, low, close, dates):
         """
@@ -542,7 +546,7 @@ class Test:
  		R3 = PP + 2 * (High - Low)
 		S3 = PP - 2 * (High - Low)
         """
-        pp, r1, r2, r3 = [[],[]], [[],[]], [[],[]], [[],[]]
+        pp, r1, r2, r3, r4 = [[],[]], [[],[]], [[],[]], [[],[]], [[],[]]
 
         duration = 112
 
@@ -571,8 +575,10 @@ class Test:
             r3[0].append(curPP + 2*(maxV-minV))
             r3[1].append(dates[i])
 
+            r4[0].append(((close[i-1]/1000 -(close[i-1]/1000)%1)+1)*1000)
+            r4[1].append(dates[i])
 
-        return r1, r2, r3
+        return r1, r2, r3, r4
 
     def call_simulation(self, close_data, dates, close_data_mAV, dates_mAV, start, start_mAV, low_data, high_data):
         rsi_calculation, mAV_calculation = [], []
@@ -898,9 +904,9 @@ class Test:
         
         stopLoss = 0.04
 
-        print("starting balance: ", self.amount*open_data[start])
-        print(dates[start], "  buy at ", open_data[start])
         buyEnabled = True
+        bought = 2
+        sold = 2
         for idx in range(0, len(rsi_calculation[0])-2):
             date = dates[start+idx]
             rsi_index, mav_index, mfi_i = idx, idx, idx
@@ -909,54 +915,37 @@ class Test:
                 if dat==date:
                     resistanceIdx = num-1
                     break
-            # try:
-            #     mfi_i = mfi[1].index(date)
-            # except ValueError:
-            #     mfi_i = 0
-            
-            # try:
-            #     rsi_index = rsi_calculation[1].index(date)
-            # except ValueError:
-            #     rsi_index = 0
-
-            # try:
-            #     mav_index = mav_calculation[1].index(date)
-            # except ValueError:
-            #     mav_index = 0
-            """ if high_data[idx] > lastBuyPrice:
-                lastBuyPrice = high_data[idx] """
+            # if open_data[start+idx+1] > lastBuyPrice and lastBuyPrice != 0:
+            #     lastBuyPrice = open_data[start+idx+1]
             if mav_calculation[0][mav_index] == "buy":
                 buyEnabled = True
-            if ((buyEnabled and rsi_calculation[0][rsi_index] == "buy") or open_data[start + idx] > resistances[0][0][resistanceIdx] or open_data[start + idx] > resistances[1][0][resistanceIdx] or open_data[start + idx] > resistances[2][0][resistanceIdx]) and self.amount == 0:
-            
-            # if (rsi_calculation[0][rsi_index] == "buy") and self.amount == 0:
-            # if (mfi[0][mfi_i] == "buy") and self.amount == 0:
-            # if (mfi[0][mfi_i] == "buy") and self.amount == 0:
-            # if (rsi_calculation[0][rsi_index] == "buy" ) and self.amount == 0 and av[0][av_i] > av[0][av_i-1]:
-            # if (rsi_calculation[0][rsi_index] == "buy" or mfi[0][mfi_i] == "buy") and self.amount == 0:
+            if buyEnabled and (rsi_calculation[0][rsi_index] == "buy" 
+                or open_data[start + idx] > resistances[0][0][resistanceIdx] or open_data[start + idx] > resistances[1][0][resistanceIdx] or open_data[start + idx] > resistances[2][0][resistanceIdx] #or open_data[start + idx] > resistances[3][0][resistanceIdx] 
+                ) and self.amount == 0 and sold > 1:
+
+                bought = 0
+              
                 self.amount = (self.balance - 0.002*self.balance) / open_data[start + idx]
                 lastBuyPrice = open_data[start + idx]
                 balance_combined[0].append(self.balance)
                 balance_combined[1].append(dates[start+idx])
-                print(dates[start+idx], "  buy at open ", open_data[start + idx], " high would be: ", high_data[start+idx], " low would be: ", low_data[start+idx])
+                if rsi_calculation[0][rsi_index] == "buy":
+                    print(dates[start+idx], " RSI buy at open ", open_data[start + idx], " high would be: ", high_data[start+idx], " low would be: ", low_data[start+idx])
+                if open_data[start + idx] > resistances[0][0][resistanceIdx] or open_data[start + idx] > resistances[1][0][resistanceIdx] or open_data[start + idx] > resistances[2][0][resistanceIdx]:
+                    print(dates[start+idx], " RESISTANCE buy at open ", open_data[start + idx], " high would be: ", high_data[start+idx], " low would be: ", low_data[start+idx])
 
-            # elif (dates[idx] == dates[len(dates)-2] or mfi[0][mfi_i] == "sell") and self.amount != 0:
-            # elif (mav_calculation[0][mav_index] == "sell" or dates[idx] == dates[len(dates)-2] or mfi[0][mfi_i] == "sell") and self.amount != 0:
-            # elif (mav_calculation[0][mav_index] == "sell" or mfi[0][mfi_i] == "sell" or dates[idx] == dates[len(dates)-2] or ((lastBuyPrice/open_data[idx+1])-1) > stopLoss ) and self.amount != 0:
-            # elif (mfi[0][mfi_i] == "sell" or dates[idx] == dates[len(dates)-2] or ((lastBuyPrice/open_data[idx+1])-1) > stopLoss ) and self.amount != 0:
-            
             elif (mav_calculation[0][mav_index] == "sell" or mfi[0][mfi_i] == "sell" or dates[start+idx+1] == dates[len(dates)-2] or ((lastBuyPrice/open_data[start+idx+1])-1) > stopLoss 
-                or open_data[start + idx+1] < supports[0][0][resistanceIdx] or open_data[start + idx+1] < supports[1][0][resistanceIdx] or open_data[start + idx+1] < supports[2][0][resistanceIdx]
-                ) and self.amount != 0:
+                or open_data[start + idx+1] < supports[0][0][resistanceIdx] or open_data[start + idx+1] < supports[1][0][resistanceIdx] or open_data[start + idx+1] < supports[2][0][resistanceIdx] #or open_data[start + idx+1] < supports[3][0][resistanceIdx]
+                ) and self.amount != 0 and bought > 1:
+                sold = 0
 
                 self.balance = self.amount * open_data[start+idx+1]
                 if ((lastBuyPrice/open_data[start+idx+1])-1) > stopLoss:
-                    # self.balance = self.amount * (lastBuyPrice-lastBuyPrice*stopLoss)
-                    # self.balance = self.amount * open_data[idx+1]
                     buyEnabled = False
-                    print(dates[start+idx+1], "  STOPLOSS sell at open", open_data[start + idx+1], " high would be: ", high_data[start+idx], " low would be: ", low_data[idx], "          ", self.balance)
+                    print(dates[start+idx+1], "  STOPLOSS sell at open", open_data[start + idx+1], " high would be: ", high_data[start+idx], " low would be: ", low_data[start + idx], "          ", self.balance)
                 else:
-                    # self.balance = self.amount * open_data[idx+1]
+                    if(open_data[start + idx+1] < supports[0][0][resistanceIdx] or open_data[start + idx+1] < supports[1][0][resistanceIdx] or open_data[start + idx+1] < supports[2][0][resistanceIdx]):
+                        print(dates[start+idx+1], "  Resistance sell at open", open_data[start + idx+1], " high would be: ", high_data[start+idx], " low would be: ", low_data[idx], "          ", self.balance)
                     if(mav_calculation[0][mav_index] == "sell"):
                         print(dates[start+idx+1], "  MAV sell at open", open_data[start + idx+1], " high would be: ", high_data[start+idx], " low would be: ", low_data[idx], "          ", self.balance)
                     if(mfi[0][mfi_i] == "sell"):
@@ -966,19 +955,22 @@ class Test:
                 print("")
                 self.amount = 0
                 balance_combined[0].append(self.balance)
-                # balance_combined[1].append(dates[idx+1])
                 balance_combined[1].append(dates[start+idx+1])
 
+            bought += 1
+            sold += 1
         profitable = 0
         for i in range(2,len(balance_combined[0])):
             if balance_combined[0][i] > balance_combined[0][i-1]:
                 profitable +=1
         
-        profTrades = profitable/(len(balance_combined[0])-2)
-        print(profTrades)
+        profTrades = 0
+        if len(balance_combined[0])-2 > 0:
+            profTrades = profitable/(len(balance_combined[0])-2)
+            print(profTrades)
 
         print("buy and hold balance: ",((100 - 0.002*100) / open_data[start]) * open_data[len(open_data)-1])
-
+        print("\n\n\n")
         return balance_combined, profTrades
 
 class Helper:
