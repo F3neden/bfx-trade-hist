@@ -254,6 +254,7 @@ class Test:
         for day in range(start, len(rsi_data)):
             buyOrSell[1].append(dates[day])
             buyOrSell[2].append(rsi_data[day])
+
             #overbought = sell
             if rsi_data[day] <= limit_top and rsi_data[day-1] >= limit_top:
                 buyOrSell[0].append("sell")
@@ -305,7 +306,7 @@ class Test:
             if sum == 0 and periodDivisor == 0:
                 average.append(0.0)
             else:    
-                average.append(sum / periodDivisor)
+                average.append(round(sum/periodDivisor, 4))
 
         return average
 
@@ -528,6 +529,7 @@ class Test:
             s2[1].append(dates[i])
 
             s3[0].append(curPP - 2*(maxV-minV))
+            # s3[0].append(minV - 2*(maxV-curPP))
             s3[1].append(dates[i])
 
             s4[0].append(((close[i-1]/1000 -(close[i-1]/1000)%1))*1000)
@@ -543,7 +545,7 @@ class Test:
  		S1 = 2 * PP - High
  		R2 = PP + (High - Low)
  		S2 = PP - (High - Low)
- 		R3 = PP + 2 * (High - Low)
+ 		R3 = PP + 2 * (High - Low) ----- R3 = High + 2 *  (PP - Low)
 		S3 = PP - 2 * (High - Low)
         """
         pp, r1, r2, r3, r4 = [[],[]], [[],[]], [[],[]], [[],[]], [[],[]]
@@ -566,13 +568,14 @@ class Test:
             pp[1].append(dates[i])
 
             curPP = pp[0][len(pp[0])-1]
-            r1[0].append(2*curPP -minV)
+            r1[0].append(int(round(2*curPP -minV)))
             r1[1].append(dates[i])
 
-            r2[0].append(curPP + (maxV-minV))
+            r2[0].append(int(round(curPP + (maxV-minV))))
             r2[1].append(dates[i])
 
-            r3[0].append(curPP + 2*(maxV-minV))
+            r3[0].append(int(round(curPP + 2*(maxV-minV))))
+            # r3[0].append(maxV + 2 * (curPP-minV))
             r3[1].append(dates[i])
 
             r4[0].append(((close[i-1]/1000 -(close[i-1]/1000)%1)+1)*1000)
@@ -882,83 +885,195 @@ class Test:
 
         return balance_combined
 
-    def combinedMFI(self, close_data, dates, rsi_calculation, mav_calculation, start, end, low_data, high_data, mfi, open_data, resistances, supports):
+    def combinedMFI(self, close_data, dates, rsi_calculation, mav_calculation, start, end, low_data, high_data, mfi, open_data, resistances, supports, rsi_mid, mfi_mid, mid_open, mid_dates, mid_low):
         """
         combines RSI and MFI
         """
+        countBuy, counter = 0,0
 
         self.balance = 100
         self.amount = 0
+        midAmount = 0
         balance_combined = [[],[]]
         date = 0
-        lastBuyPrice = 0
         rsi_index, mav_index, mfi_i = 0, 0, 0
-
-        # print("")
-        # print("")
-        # print("test with combined rsi and mfi:")
-        # print("")
 
         balance_combined[0].append(self.balance)
         balance_combined[1].append(dates[start])
         
-        stopLoss = 0.04
+        lastBuyPriceMid = 0
+        stopLossMid = 0.042
+        lastBuyPrice = 0
+        stopLoss = 0.042
 
         buyEnabled = True
+        enable30min = True
         bought = 2
         sold = 2
         for idx in range(0, len(rsi_calculation[0])-2):
             date = dates[start+idx]
             rsi_index, mav_index, mfi_i = idx, idx, idx
-            
+
+            priceBuy = open_data[start + idx + 0] #if open is rsi source then buy at open of same candle 
+            price = open_data[start + idx + 1] #if close is source of indicator then buy at next open
+
             for num, dat in enumerate(resistances[0][1], start = 0):
                 if dat==date:
                     resistanceIdx = num-1
-                    break
-            # if open_data[start+idx+1] > lastBuyPrice and lastBuyPrice != 0:
-            #     lastBuyPrice = open_data[start+idx+1]
+
             if mav_calculation[0][mav_index] == "buy":
                 buyEnabled = True
-            if buyEnabled and (rsi_calculation[0][rsi_index] == "buy" 
-                or open_data[start + idx] > resistances[0][0][resistanceIdx] or open_data[start + idx] > resistances[1][0][resistanceIdx] or open_data[start + idx] > resistances[2][0][resistanceIdx] #or open_data[start + idx] > resistances[3][0][resistanceIdx] 
-                ) and self.amount == 0 and sold > 1:
 
-                bought = 0
-              
-                self.amount = (self.balance - 0.002*self.balance) / open_data[start + idx]
-                lastBuyPrice = open_data[start + idx]
-                balance_combined[0].append(self.balance)
-                balance_combined[1].append(dates[start+idx])
-                if rsi_calculation[0][rsi_index] == "buy":
-                    print(dates[start+idx], " RSI buy at open ", open_data[start + idx], " high would be: ", high_data[start+idx], " low would be: ", low_data[start+idx])
-                if open_data[start + idx] > resistances[0][0][resistanceIdx] or open_data[start + idx] > resistances[1][0][resistanceIdx] or open_data[start + idx] > resistances[2][0][resistanceIdx]:
-                    print(dates[start+idx], " RESISTANCE buy at open ", open_data[start + idx], " high would be: ", high_data[start+idx], " low would be: ", low_data[start+idx])
+################# short time trader ###########
 
-            elif (mav_calculation[0][mav_index] == "sell" or mfi[0][mfi_i] == "sell" or dates[start+idx+1] == dates[len(dates)-2] or ((lastBuyPrice/open_data[start+idx+1])-1) > stopLoss 
-                or open_data[start + idx+1] < supports[0][0][resistanceIdx] or open_data[start + idx+1] < supports[1][0][resistanceIdx] or open_data[start + idx+1] < supports[2][0][resistanceIdx] #or open_data[start + idx+1] < supports[3][0][resistanceIdx]
-                ) and self.amount != 0 and bought > 1:
-                sold = 0
+            if enable30min and buyEnabled:
+                # handle index of 30m rsi
+                try:    
+                    mid_idx = rsi_mid[1].index(date)
+                except ValueError:
+                    mid_idx = 0
 
-                self.balance = self.amount * open_data[start+idx+1]
-                if ((lastBuyPrice/open_data[start+idx+1])-1) > stopLoss:
-                    buyEnabled = False
-                    print(dates[start+idx+1], "  STOPLOSS sell at open", open_data[start + idx+1], " high would be: ", high_data[start+idx], " low would be: ", low_data[start + idx], "          ", self.balance)
+                if not mid_idx == 0:
+                    for i in range(0,6):
+
+                        midPrice = mid_open[mid_idx] # <- for rsi
+                        # midPrice = mid_open[mid_idx+1] # <- for mfi
+                        # print("rsi ", rsi_mid[1][mid_idx], rsi_mid[2][mid_idx], "mfi: ", mfi_mid[1][mid_idx], mfi_mid[2][mid_idx] )
+
+                        # print("rsi ", rsi_mid[1][mid_idx], rsi_mid[2][mid_idx], midPrice)
+
+                        if rsi_mid[0][mid_idx] == "buy" and mfi_mid[0][mid_idx] == "buy" and self.getAvailBalance() >= 20.0: 
+                        # if mfi_mid[0][mid_idx] == "buy" and self.getAvailBalance() >= 20.0:
+                        # if mfi_mid[2][mid_idx] > mfi_mid[2][mid_idx-1] and self.getAvailBalance() >= 20.0: #and rsi_mid[2][mid_idx+1] > rsi_mid[2][mid_idx] and self.getAvailBalance() >= 20.0:
+                            midAmount += self.calcMaxAmount(midPrice)/2
+                            self.simulate_buy(self.calcMaxAmount(midPrice)/2, midPrice)
+                            lastBuyPrice = midPrice
+                            lastBuyPriceMid = mid_low[mid_idx]
+                            balance_combined[0].append(self.getWalletBalance(midPrice))
+                            balance_combined[1].append(mid_dates[mid_idx])
+                            print(mid_dates[mid_idx], " RSI - MID buy at open ", midPrice)
+
+                        elif (rsi_mid[0][mid_idx] == "sell"
+                            or (i == 0 and rsi_calculation[0][rsi_index] == "sell")
+                            or ((lastBuyPriceMid/midPrice)-1) > stopLoss
+                            ) and self.getAvailAmount() > 0.0:
+                        # elif mfi_mid[0][mid_idx] == "sell" and self.getAvailAmount() > 0.0:
+                        # elif mfi_mid[2][mid_idx] < mfi_mid[2][mid_idx-1] and self.getAvailAmount() > 0.0: #and rsi_mid[2][mid_idx+1] < rsi_mid[2][mid_idx] and self.getAvailAmount() > 0.0:
+
+                            if (i == 0 and rsi_calculation[0][rsi_index] == "sell"):
+                                print(mid_dates[mid_idx], " RSI - 3H sell at open ", priceBuy, "              ", self.getWalletBalance(midPrice))
+                                self.simulate_sell(midAmount, priceBuy)
+                                midAmount = 0
+                            elif ((lastBuyPriceMid/midPrice)-1) > stopLoss:
+                                print(mid_dates[mid_idx], " STOPLLOSS - MID sell at open ", midPrice, "              ", self.getWalletBalance(midPrice))
+                                self.simulate_sell(self.getAvailAmount()/2, midPrice)
+                                midAmount -= self.getAvailAmount()/2
+                            else:
+                                print(mid_dates[mid_idx], " RSI - MID sell at open ", midPrice, "              ", self.getWalletBalance(midPrice))
+                                self.simulate_sell(self.getAvailAmount()/2, midPrice)
+                                midAmount -= self.getAvailAmount()/2
+                                # self.simulate_sell(self.getAvailAmount()*(3/4), midPrice)
+                                # midAmount -= self.getAvailAmount()*(3/4)
+
+                            balance_combined[0].append(self.getWalletBalance(midPrice))
+                            balance_combined[1].append(mid_dates[mid_idx])
+
+                            print(mid_dates[mid_idx], " RSI - MID sell at open ", midPrice, "              ", self.getWalletBalance(midPrice))
+
+                        mid_idx += 1
                 else:
-                    if(open_data[start + idx+1] < supports[0][0][resistanceIdx] or open_data[start + idx+1] < supports[1][0][resistanceIdx] or open_data[start + idx+1] < supports[2][0][resistanceIdx]):
-                        print(dates[start+idx+1], "  Resistance sell at open", open_data[start + idx+1], " high would be: ", high_data[start+idx], " low would be: ", low_data[idx], "          ", self.balance)
+                    print("an error occured finding the current 30m index!")
+
+################ long time trader ########
+
+            if buyEnabled and (rsi_calculation[0][rsi_index] == "buy" 
+                or priceBuy > resistances[0][0][resistanceIdx] 
+                or priceBuy > resistances[1][0][resistanceIdx] 
+                or priceBuy > resistances[2][0][resistanceIdx]
+                ) and self.getAvailBalance() >= 20.0 and sold > 1:
+
+                enable30min = False
+                bought = 0
+
+                if (rsi_calculation[0][rsi_index] == "buy"
+                    or priceBuy > resistances[0][0][resistanceIdx] 
+                    or priceBuy > resistances[1][0][resistanceIdx] 
+                    or priceBuy > resistances[2][0][resistanceIdx]
+                    ):
+                    
+                    # self.simulate_buy(self.calcMaxAmount(priceBuy)*(2/3), priceBuy)
+                    # lastBuyPrice = priceBuy
+                    lastBuyPrice = low_data[start + idx + 0]
+                    counter = 0
+                    self.simulate_buy(self.calcMaxAmount(priceBuy), priceBuy)
+
+                else:
+                    counter = counter + 1
+                    self.simulate_buy(self.calcMaxAmount(priceBuy)/(5 + counter * -1), priceBuy)
+                    print(dates[start+idx], "Buy at ", priceBuy ," 1/", 5 + counter * -1, " curr rsi: ",  rsi_calculation[2][rsi_index], " prev rsi: ", rsi_calculation[2][rsi_index-1])
+                    if counter >= 4:
+                        counter = 0
+
+                balance_combined[0].append(self.getWalletBalance(priceBuy))
+                balance_combined[1].append(dates[start+idx])
+
+                if rsi_calculation[0][rsi_index] == "buy":
+                    print(dates[start+idx], " RSI ", rsi_calculation[2][rsi_index]," buy at open ", priceBuy, " high would be: ", high_data[start+idx-1], " low would be: ", low_data[start+idx-1])
+                if priceBuy > resistances[0][0][resistanceIdx] or priceBuy > resistances[1][0][resistanceIdx] or priceBuy > resistances[2][0][resistanceIdx]:
+                    print(dates[start+idx], " RESISTANCE buy at open ", priceBuy, " high would be: ", high_data[start+idx-1], " low would be: ", low_data[start+idx-1])
+
+            elif (mav_calculation[0][mav_index] == "sell" 
+                or mfi[0][mfi_i] == "sell" 
+                or dates[start+idx+1] == dates[len(dates)-2] 
+                or ((lastBuyPrice/price)-1) > stopLoss # <-- stoploss
+                or price < supports[0][0][resistanceIdx] 
+                or price < supports[1][0][resistanceIdx] 
+                or price < supports[2][0][resistanceIdx]
+                ) and self.getAvailAmount() > 0.0 and bought > 1: 
+                sold = 0
+                enable30min = True
+
+                if (mav_calculation[0][mav_index] == "sell" 
+                    or mfi[0][mfi_i] == "sell" 
+                    or dates[start+idx+1] == dates[len(dates)-2] 
+                    or open_data[start + idx+1] < supports[0][0][resistanceIdx] 
+                    or open_data[start + idx+1] < supports[1][0][resistanceIdx] 
+                    or open_data[start + idx+1] < supports[2][0][resistanceIdx]
+                    or ((lastBuyPrice/price)-1) > stopLoss
+                    ):
+                    
+                    # self.simulate_sell(self.getAvailAmount()*(2/3), price)
+                # elif ((lastBuyPrice/price)-1) > stopLoss:
+                    self.simulate_sell(self.getAvailAmount(), price)
+                else:
+                    counter = counter + 1
+                    self.simulate_sell(self.getAvailAmount()/(5 + counter * -1), price)
+                    print("Sell at ", price ," 1/", 5 + counter * -1)
+                    if counter >= 4:
+                        counter = 0
+
+                balance = self.getWalletBalance(price)
+
+                if ((lastBuyPrice/price)-1) > stopLoss:
+                    buyEnabled = False
+                    print(dates[start+idx+1], " STOPLOSS sell at open", price, " high would be: ", high_data[start+idx], " low would be: ", low_data[start + idx], "          ", balance)
+                else:
+                    if(price < supports[0][0][resistanceIdx] or price < supports[1][0][resistanceIdx] or price < supports[2][0][resistanceIdx]):
+                        print(dates[start+idx+1], " Resistance sell at open", open_data[start + idx+1], " high would be: ", high_data[start+idx], " low would be: ", low_data[idx], "          ", balance)
                     if(mav_calculation[0][mav_index] == "sell"):
-                        print(dates[start+idx+1], "  MAV sell at open", open_data[start + idx+1], " high would be: ", high_data[start+idx], " low would be: ", low_data[idx], "          ", self.balance)
+                        print(dates[start+idx+1], " MAV sell at open", price, " high would be: ", high_data[start+idx], " low would be: ", low_data[idx], "          ", balance)
                     if(mfi[0][mfi_i] == "sell"):
-                        print(dates[start+idx+1], "  MFI sell at open", open_data[start + idx+1], " high would be: ", high_data[start+idx], " low would be: ", low_data[start+idx], "          ", self.balance)
+                        print(dates[start+idx+1], " MFI sell at open", price, " high would be: ", high_data[start+idx], " low would be: ", low_data[start+idx], "          ", balance)
                     if(dates[start+idx+1] == dates[len(dates)-2]):
-                        print(dates[start+idx+1], "  FIN sell at open", open_data[start + idx+1], " high would be: ", high_data[start+idx], " low would be: ", low_data[start+idx], "          ", self.balance)
+                        print(dates[start+idx+1], " FIN sell at open", price, " high would be: ", high_data[start+idx], " low would be: ", low_data[start+idx], "          ", balance)
                 print("")
-                self.amount = 0
-                balance_combined[0].append(self.balance)
+                
+                balance_combined[0].append(self.getWalletBalance(price))
                 balance_combined[1].append(dates[start+idx+1])
 
             bought += 1
             sold += 1
+
         profitable = 0
         for i in range(2,len(balance_combined[0])):
             if balance_combined[0][i] > balance_combined[0][i-1]:
@@ -967,11 +1082,45 @@ class Test:
         profTrades = 0
         if len(balance_combined[0])-2 > 0:
             profTrades = profitable/(len(balance_combined[0])-2)
-            print(profTrades)
+            print("Profitable trades: ", round(100*profTrades,2), "%")
 
         print("buy and hold balance: ",((100 - 0.002*100) / open_data[start]) * open_data[len(open_data)-1])
         print("\n\n\n")
         return balance_combined, profTrades
+
+    def simulate_buy(self, amount, price):
+        if(self.getAvailBalance() > 0 and self.getAvailBalance() >= (amount * price / 0.998)):
+            self.setAvailBalance(round(self.getAvailBalance() - (amount * price / 0.998),5))
+            self.setAvailAmount(self.getAvailAmount() + amount)
+        else:
+            self.setAvailAmount(self.getAvailAmount() + self.calcMaxAmount(price))
+            self.setAvailBalance(0.0)
+
+    def simulate_sell(self, amount, price):
+        if(self.getAvailAmount() > 0 and amount <= self.getAvailAmount()):
+            self.setAvailBalance(self.getAvailBalance() + amount * price)
+            self.setAvailAmount(self.getAvailAmount() - amount)
+        else:
+            self.setAvailBalance(self.getAvailBalance() + self.getAvailAmount() * price)
+            self.setAvailAmount(0.0)
+
+    def calcMaxAmount(self, price):
+        return round(((0.998 * self.getAvailBalance()) / price), 5)
+    
+    def getWalletBalance(self, price):
+        return round(self.getAvailBalance() + self.getAvailAmount() * price,5)
+
+    def getAvailAmount(self):
+        return self.amount
+
+    def setAvailAmount(self, amount):
+        self.amount = amount
+
+    def getAvailBalance(self):
+        return self.balance
+
+    def setAvailBalance(self, balance):
+        self.balance = balance
 
 class Helper:
     def __init__(self, key, secret):
@@ -981,11 +1130,39 @@ class Helper:
         self.SECRET = secret
         pass
     
-    def getCandles(self, timeFrame, symbol):
+    def convert_scrapedCandles(self):
+        dates, close_data, low_data, high_data, open_data, volume_data = [], [], [], [], [], []
+
+        # open the file in read binary mode
+        file = open("candles30m_2017:09:01", "rb")
+        #read the file to numpy array
+        candles = np.load(file)
+
+        for candle in candles:
+            ts = int(candle[0]) / 1000 
+            dates.append(datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S'))
+            open_data.append(candle[1])
+            high_data.append(candle[3])
+            low_data.append(candle[4])
+            close_data.append(candle[2])
+            volume_data.append(abs(candle[5]))
+
+        dates = list(reversed(dates))
+        open_data = list(reversed(open_data))
+        close_data = list(reversed(close_data))
+        high_data = list(reversed(high_data))
+        low_data = list(reversed(low_data))
+        volume_data = list(reversed(volume_data))
+
+        return dates, open_data, close_data, high_data, low_data, volume_data
+
+    def getCandles(self, timeFrame, symbol, parameters=None):
         dates, close_data, low_data, high_data, open_data, volume_data = [], [], [], [], [], []
 
         # set the parameters to limit the number of bids or asks
-        parameters = {'limit': 10000, 'sort': -1}
+        if parameters == None:
+            parameters = {'limit': 10000, 'sort': -1}
+
         timeFrame_symbol = ":" + timeFrame + ":t" + symbol
         if timeFrame == "3h":
             candles = self._get_3h(self.url_for(PATH_CANDLES+'/hist', (timeFrame_symbol), parameters=parameters, version=VERSION2))
@@ -1030,17 +1207,17 @@ class Helper:
     def _get(self, url):
         try:
             data = requests.get(url, timeout=TIMEOUT)
-            # with open('btcusd-1m.json', 'w+') as outf:
-            #  outf.write(data.text)
-            #  outf.close()
+            with open('btcusd-30m.json', 'w+') as outf:
+             outf.write(data.text)
+             outf.close()
             return data.json()
             # return requests.get(url, timeout=TIMEOUT).json()
         except requests.exceptions.Timeout:
             print("timeout error occurred")
             raise TimeoutError
         except requests.exceptions.RequestException as e:#
-            # with open('btcusd-1m.json', 'r') as file:
-            #  return json.load(file)
+            with open('btcusd-30m.json', 'r') as file:
+             return json.load(file)
             print("catastrophic error. bail.")
             # raise SystemExit(e)
         

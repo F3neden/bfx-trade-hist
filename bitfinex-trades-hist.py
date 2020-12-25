@@ -29,7 +29,7 @@ fig = make_subplots(rows=2, cols=1)
 fig_quick = go.Figure()
 
 # create cutout
-start = len(close_data)-9850#3300 #3500 #334 #2500 #276 #830 #360 #87 #9950 #2920 #8760
+start = len(close_data)-9850 #9850 #9850 #3300 #3500 #334 #2500 #276 #830 #360 #87 #9950 #2920 #8760
 end = len(close_data)-0
 
 # datesShortCut = dates_short[start_short:]
@@ -119,7 +119,7 @@ fig_quick.add_trace(go.Scatter(y=balance[0], x=balance[1], name='comb:balance:kn
 
 # weekCandles = helper.getCandles("3h",symbol)
 
-#                                   high            low             close           dates
+# #                                   high            low             close           dates
 # resistances = test.calcResistances(weekCandles[3], weekCandles[4], weekCandles[2], weekCandles[0],)
 # supports = test.calcSupports(weekCandles[3], weekCandles[4], weekCandles[2], weekCandles[0],)
 resistances = test.calcResistances(ash_h, ash_l, ash_c, ash_d,)
@@ -141,8 +141,14 @@ rsi_calculation[0] = rsi_calculation[0][start+1:]
 rsi_calculation[1] = rsi_calculation[1][start+1:]
 rsi_calculation[2] = rsi_calculation[2][start+1:]
 
-# stoch_rsi = stoch_rsi[start:]
-# fig.append_trace(go.Scatter(y=stoch_rsi, x=datesCut, name='rsi-long'), row=2, col=1)
+imid = 17
+# scrape data for 30m to get till start of calculation
+mid_dates, mid_open, mid_close, mid_high, mid_low, mid_volume = helper.convert_scrapedCandles()
+
+rsi = test.rsi(imid, mid_close)
+stoch_rsi = test.stoch_rsi(imid, rsi, 3, 3)
+rsi_mid = test.rsi_execute(imid, stoch_rsi, open_data, 95, 5, mid_dates, 50, limitStop)[2]
+mfi_mid = test.mfi_execute(mid_close, mid_dates, mid_high, mid_low, mid_volume, 50, 80, 20, 8)[2]
 
 #mav
 averageShort = test.moving_average(ash_c, mavShort)
@@ -157,9 +163,11 @@ mfi_calculation[0] = mfi_calculation[0][start+1:]
 mfi_calculation[1] = mfi_calculation[1][start+1:]
 mfi_calculation[2] = mfi_calculation[2][start+1:]
 #combMFI
-balance = test.combinedMFI(close_data[1:], dates[1:], rsi_calculation, mAV_calculation, start, end, low_data[1:], high_data[1:], mfi_calculation, open_data[1:], resistances, supports)
+balance = test.combinedMFI(close_data[1:], dates[1:], rsi_calculation, mAV_calculation, start, end, low_data[1:], high_data[1:], mfi_calculation, open_data[1:], resistances, supports, rsi_mid, mfi_mid, mid_open, mid_dates, mid_low)
 # for i, bal in enumerate(balance[0]):
 #     balance[0][i] = math.log(bal)
+for i, bal in enumerate(balance[0][0]):
+        balance[0][0][i] = math.log(bal)
 f = open("maxBalanceAsh.txt", "w")
 f.write(str(balance[0][0][len(balance[0][0])-1]) + "\n" + str(balance[1] ))
 f.close()
@@ -169,7 +177,6 @@ fig_quick.add_trace(go.Scatter(y=balance[0][0], x=balance[0][1], name='ash'+str(
 #####
 low = 5
 i, mfiP = 14, 33
-# mavLong, mavShort = 64, 12
 mavLong, mavShort = 86, 4
 mfiLow, mfiHigh = 15, 85
 limitStop = 0
@@ -177,11 +184,20 @@ limitStop = 0
 #rsi
 rsi = test.rsi(i, open_data)
 stoch_rsi = test.stoch_rsi(i, rsi, 3, 3)
-rsi_calculation = test.rsi_execute(i, stoch_rsi, open_data, 100, low, dates, start, limitStop)[2]
+rsi_calculation = test.rsi_execute(i, stoch_rsi, open_data, 95, low, dates, start, limitStop)[2]
 
 rsi_calculation[0] = rsi_calculation[0][start+1:]
 rsi_calculation[1] = rsi_calculation[1][start+1:]
 rsi_calculation[2] = rsi_calculation[2][start+1:]
+
+imid = 17
+# scrape data for 30m to get till start of calculation
+mid_dates, mid_open, mid_close, mid_high, mid_low, mid_volume = helper.convert_scrapedCandles()
+
+rsi = test.rsi(imid, mid_close)
+stoch_rsi = test.stoch_rsi(imid, rsi, 3, 3)
+rsi_mid = test.rsi_execute(imid, stoch_rsi, open_data, 95, 5, mid_dates, 50, limitStop)[2]
+mfi_mid = test.mfi_execute(mid_close, mid_dates, mid_high, mid_low, mid_volume, 50, 80, 20, 8)[2]
 
 #mav
 averageShort = test.moving_average(close_data, mavShort)
@@ -199,12 +215,12 @@ mfi_calculation[1] = mfi_calculation[1][start+1:]
 mfi_calculation[2] = mfi_calculation[2][start+1:]
 
 #combMFI
-balance = test.combinedMFI(close_data, dates, rsi_calculation, mAV_calculation, start, len(close_data), low_data, high_data, mfi_calculation, open_data, resistances, supports)
+balance = test.combinedMFI(close_data, dates, rsi_calculation, mAV_calculation, start, len(close_data), low_data, high_data, mfi_calculation, open_data, resistances, supports, rsi_mid, mfi_mid, mid_open, mid_dates, mid_low)
 f = open("maxBalanceNormal.txt", "w")
 f.write(str(balance[0][0][len(balance[0][0])-1]) + "\n" + str(balance[1] ))
 f.close()
-# for i, bal in enumerate(balance[0][0]):
-#         balance[0][0][i] = math.log(bal)
+for i, bal in enumerate(balance[0][0]):
+        balance[0][0][i] = math.log(bal)
 fig_quick.add_trace(go.Scatter(y=balance[0][0], x=balance[0][1], name='normal'+str([low, i, mavShort, mavLong, mfiHigh])+ 'close stoploss4'))
 fig_quick.show()
 # fig.show()
